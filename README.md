@@ -2,7 +2,7 @@
 
 [![GitHub release](https://img.shields.io/github/v/release/caiopizzol/claude-sessions)](https://github.com/caiopizzol/claude-sessions/releases)
 
-A floating panel for macOS that monitors all your Claude Code terminal sessions.
+A macOS utility that monitors all your Claude Code terminal sessions.
 
 ![Claude Sessions Screenshot](docs/screenshot.png)
 
@@ -45,11 +45,11 @@ On first launch, the app guides you through:
 2. Sessions appear automatically in the floating panel
 3. Click a session to focus its terminal
 
-The panel stays visible across all spaces and doesn't steal focus.
+The app stays visible across all spaces and doesn't steal focus.
 
 ## How it works
 
-Claude Sessions uses Claude Code's hook system to track session state. When you start Claude Code, hook scripts send status updates to the app via a local socket. The app displays this data in a floating panel.
+Claude Sessions uses Claude Code's hook system to track session state. When you start Claude Code, hook scripts send status updates to the app via a local socket. The app displays this data in real time.
 
 No data leaves your machine.
 
