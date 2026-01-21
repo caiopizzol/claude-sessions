@@ -1,5 +1,7 @@
 # Claude Sessions
 
+[![GitHub release](https://img.shields.io/github/v/release/caiopizzol/claude-sessions)](https://github.com/caiopizzol/claude-sessions/releases)
+
 A floating panel for macOS that monitors all your Claude Code terminal sessions.
 
 ![Claude Sessions Screenshot](docs/screenshot.png)
