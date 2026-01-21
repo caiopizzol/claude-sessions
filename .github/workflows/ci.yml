@@ -1,0 +1,25 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  check:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install tools
+        run: brew install swiftlint swiftformat
+
+      - name: Lint
+        run: swiftlint lint --quiet widget/
+
+      - name: Format check
+        run: swiftformat --lint widget/
+
+      - name: Build
+        run: cd widget && swift build -c debug
