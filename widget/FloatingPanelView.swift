@@ -124,18 +124,18 @@ struct WindowGroupView: View {
             HStack(spacing: 6) {
                 Image(systemName: "chevron.right")
                     .font(.system(size: 9, weight: .semibold))
-                    .foregroundColor(.white.opacity(0.4))
+                    .foregroundColor(.secondary)
                     .rotationEffect(.degrees(isCollapsed ? 0 : 90))
 
                 Image(systemName: "macwindow")
                     .font(.system(size: 10))
-                    .foregroundColor(.white.opacity(0.4))
+                    .foregroundColor(.secondary)
 
                 if isEditingName {
                     TextField("Window name", text: $editText)
                         .textFieldStyle(.plain)
                         .font(.system(size: 11, weight: .medium))
-                        .foregroundColor(.white.opacity(0.9))
+                        .foregroundColor(.primary)
                         .focused($isTextFieldFocused)
                         .onSubmit {
                             onWindowRename(editText)
@@ -147,22 +147,22 @@ struct WindowGroupView: View {
                 } else {
                     Text(group.displayName)
                         .font(.system(size: 11, weight: .medium))
-                        .foregroundColor(.white.opacity(0.7))
+                        .foregroundColor(.primary.opacity(0.8))
                 }
 
                 Spacer()
 
                 Text("\(group.sessions.count) tabs")
                     .font(.system(size: 10))
-                    .foregroundColor(.white.opacity(0.4))
+                    .foregroundColor(.secondary)
                     .padding(.horizontal, 6)
                     .padding(.vertical, 2)
-                    .background(Color.white.opacity(0.1))
+                    .background(Color.primary.opacity(0.08))
                     .clipShape(RoundedRectangle(cornerRadius: 4))
             }
             .padding(.horizontal, 10)
             .padding(.vertical, 8)
-            .background(Color.white.opacity(isHoveringHeader ? 0.05 : 0))
+            .background(Color.primary.opacity(isHoveringHeader ? 0.05 : 0))
             .contentShape(Rectangle())
             .onTapGesture {
                 guard !isEditingName else { return }
@@ -191,7 +191,6 @@ struct WindowGroupView: View {
 
             if !isCollapsed {
                 Divider()
-                    .background(Color.white.opacity(0.05))
 
                 // Sessions in this window
                 VStack(spacing: 0) {
@@ -204,18 +203,17 @@ struct WindowGroupView: View {
 
                         if session.id != group.sessions.last?.id {
                             Divider()
-                                .background(Color.white.opacity(0.03))
                                 .padding(.leading, 44)
                         }
                     }
                 }
             }
         }
-        .background(Color.white.opacity(0.03))
+        .background(Color.primary.opacity(0.03))
         .clipShape(RoundedRectangle(cornerRadius: 10))
         .overlay(
             RoundedRectangle(cornerRadius: 10)
-                .stroke(Color.white.opacity(0.06), lineWidth: 1)
+                .stroke(Color.primary.opacity(0.08), lineWidth: 1)
         )
     }
 }
@@ -244,7 +242,7 @@ struct GroupedSessionCardView: View {
                         .frame(width: 28, height: 28)
 
                     Circle()
-                        .stroke(Color.white.opacity(0.1), lineWidth: 2)
+                        .stroke(Color.primary.opacity(0.1), lineWidth: 2)
                         .frame(width: 24, height: 24)
 
                     Circle()
@@ -264,7 +262,7 @@ struct GroupedSessionCardView: View {
                         TextField("Session name", text: $editText)
                             .textFieldStyle(.plain)
                             .font(.system(size: 12, weight: .medium, design: .monospaced))
-                            .foregroundColor(.white)
+                            .foregroundColor(.primary)
                             .focused($isTextFieldFocused)
                             .onSubmit {
                                 onRename(editText)
@@ -276,13 +274,13 @@ struct GroupedSessionCardView: View {
                     } else {
                         Text(session.displayName.isEmpty ? "Unknown" : session.displayName)
                             .font(.system(size: 12, weight: .medium, design: .monospaced))
-                            .foregroundColor(.white)
+                            .foregroundColor(.primary)
                             .lineLimit(1)
                     }
 
                     Text(session.stateDescription)
                         .font(.system(size: 10))
-                        .foregroundColor(.white.opacity(0.5))
+                        .foregroundColor(.secondary)
                 }
 
                 Spacer()
@@ -290,12 +288,12 @@ struct GroupedSessionCardView: View {
                 if isHovering {
                     Image(systemName: "arrow.right.circle")
                         .font(.system(size: 14))
-                        .foregroundColor(.white.opacity(0.5))
+                        .foregroundColor(.secondary)
                 }
             }
             .padding(.horizontal, 10)
             .padding(.vertical, 8)
-            .background(Color.white.opacity(isHovering ? 0.05 : 0))
+            .background(Color.primary.opacity(isHovering ? 0.05 : 0))
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -351,7 +349,7 @@ struct SessionCardView: View {
 
                     // Context ring (track)
                     Circle()
-                        .stroke(Color.white.opacity(0.1), lineWidth: 2.5)
+                        .stroke(Color.primary.opacity(0.1), lineWidth: 2.5)
                         .frame(width: 28, height: 28)
 
                     // Context ring (progress)
@@ -385,7 +383,7 @@ struct SessionCardView: View {
                         TextField("Session name", text: $editText)
                             .textFieldStyle(.plain)
                             .font(.system(size: 13, weight: .medium, design: .monospaced))
-                            .foregroundColor(.white)
+                            .foregroundColor(.primary)
                             .focused($isTextFieldFocused)
                             .onSubmit {
                                 onRename(editText)
@@ -398,7 +396,7 @@ struct SessionCardView: View {
                         HStack(spacing: 6) {
                             Text(session.displayName.isEmpty ? "Unknown Project" : session.displayName)
                                 .font(.system(size: 13, weight: .medium, design: .monospaced))
-                                .foregroundColor(.white)
+                                .foregroundColor(.primary)
                                 .lineLimit(1)
                                 .help(session.displayName.isEmpty ? "Unknown Project" : session.displayName)
 
@@ -406,7 +404,7 @@ struct SessionCardView: View {
                             if isHovering, let pct = session.context_percentage {
                                 Text("[\(Int(pct * 100))%]")
                                     .font(.system(size: 10, design: .monospaced))
-                                    .foregroundColor(.white.opacity(0.5))
+                                    .foregroundColor(.secondary)
                                     .transition(.opacity)
                             }
                         }
@@ -414,23 +412,23 @@ struct SessionCardView: View {
 
                     Text(session.stateDescription)
                         .font(.system(size: 11))
-                        .foregroundColor(.white.opacity(0.6))
+                        .foregroundColor(.secondary)
                 }
 
                 Spacer()
 
                 Image(systemName: "arrow.right.circle")
                     .font(.system(size: 16))
-                    .foregroundColor(.white.opacity(isHovering ? 0.8 : 0.3))
+                    .foregroundColor(isHovering ? .primary.opacity(0.8) : .secondary)
             }
             .padding(12)
             .background(
                 RoundedRectangle(cornerRadius: 8)
-                    .fill(Color.black.opacity(isHovering ? 0.4 : 0.3))
+                    .fill(Color.primary.opacity(isHovering ? 0.08 : 0.04))
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 8)
-                    .stroke(Color.white.opacity(isHovering ? 0.2 : 0.1), lineWidth: 1)
+                    .stroke(Color.primary.opacity(isHovering ? 0.15 : 0.08), lineWidth: 1)
             )
         }
         .buttonStyle(.plain)

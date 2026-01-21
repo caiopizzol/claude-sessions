@@ -1,4 +1,5 @@
 import AppKit
+import Combine
 import SwiftUI
 
 @main
@@ -14,21 +15,13 @@ struct ClaudeSessionsApp: App {
 
 @MainActor
 class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
-    var floatingWindow: NSWindow?
+    var menubarController: MenubarController?
     var setupWindow: NSWindow?
     var stateManager: StateManager?
     var setupManager: SetupManager?
     var stateServer: StateServer?
     private var serverTask: Task<Void, Never>?
-
-    // Window size constraints (fixed width, flexible height)
-    private let fixedWidth: CGFloat = 280
-    private let minHeight: CGFloat = 200
-    private let maxHeight: CGFloat = 600
-    private let defaultHeight: CGFloat = 400
-
-    // UserDefaults key for persistence (only height, width is fixed)
-    private let windowHeightKey = "floatingWindowHeight"
+    private var stateObservation: AnyCancellable?
 
     func applicationDidFinishLaunching(_: Notification) {
         // Hide from dock
@@ -43,7 +36,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
         // Check if setup is needed
         if setupManager!.setupComplete {
-            showMainPanel()
+            showMenubar()
         } else {
             showSetupWizard()
         }
@@ -53,7 +46,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         let setupView = SetupWizardView(setupManager: setupManager!) { [weak self] in
             self?.setupWindow?.close()
             self?.setupWindow = nil
-            self?.showMainPanel()
+            self?.showMenubar()
         }
         let hostingView = NSHostingView(rootView: setupView)
 
@@ -92,75 +85,41 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         setupWindow = window
     }
 
-    private func showMainPanel() {
-        let contentView = FloatingPanelView(stateManager: stateManager!)
-        let hostingView = NSHostingView(rootView: contentView)
+    private func showMenubar() {
+        guard let stateManager else { return }
 
-        // Load saved height or use default (width is fixed)
-        let savedHeight = UserDefaults.standard.double(forKey: windowHeightKey)
-        let height = savedHeight > 0 ? savedHeight : defaultHeight
+        menubarController = MenubarController(stateManager: stateManager)
 
-        let window = NSPanel(
-            contentRect: NSRect(x: 0, y: 0, width: fixedWidth, height: height),
-            styleMask: [.nonactivatingPanel, .resizable, .fullSizeContentView],
-            backing: .buffered,
-            defer: false
-        )
-
-        // Set size constraints (fixed width, flexible height)
-        window.minSize = NSSize(width: fixedWidth, height: minHeight)
-        window.maxSize = NSSize(width: fixedWidth, height: maxHeight)
-
-        window.contentView = hostingView
-        window.titlebarAppearsTransparent = true
-        window.titleVisibility = .hidden
-        window.isMovableByWindowBackground = true
-        window.level = .floating
-        window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
-        window.isOpaque = false
-        window.backgroundColor = .clear
-        window.hasShadow = true
-        window.delegate = self
-
-        // Hide native traffic light buttons - we'll add our own close button
-        window.standardWindowButton(.closeButton)?.isHidden = true
-        window.standardWindowButton(.miniaturizeButton)?.isHidden = true
-        window.standardWindowButton(.zoomButton)?.isHidden = true
-
-        // Position in top-right corner
-        if let screen = NSScreen.main {
-            let screenRect = screen.visibleFrame
-            let windowRect = window.frame
-            let x = screenRect.maxX - windowRect.width - 20
-            let y = screenRect.maxY - windowRect.height - 20
-            window.setFrameOrigin(NSPoint(x: x, y: y))
-        }
-
-        window.makeKeyAndOrderFront(nil)
-        floatingWindow = window
+        // Observe state changes to update menubar icon
+        stateObservation = stateManager.$sessions
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] sessions in
+                self?.updateMenubarIcon(for: sessions)
+            }
     }
 
-    // Handle window close button - only terminate if main panel is closed
-    func windowWillClose(_ notification: Notification) {
-        guard let closingWindow = notification.object as? NSWindow else { return }
+    private func updateMenubarIcon(for sessions: [ClaudeSession]) {
+        let state =
+            if sessions.isEmpty {
+                SessionState.noSessions
+            } else if sessions.contains(where: { $0.state == "asking" || $0.state == "permission" }) {
+                SessionState.needsAttention
+            } else if sessions.contains(where: { $0.state == "generating" || $0.state == "running" }) {
+                SessionState.generating
+            } else {
+                SessionState.idle
+            }
 
-        // Only terminate if the main floating window is closed
-        if closingWindow === floatingWindow {
-            NSApp.terminate(nil)
-        }
+        menubarController?.updateStatusIcon(for: state)
     }
 
-    // Save window height when resized (width is fixed)
-    func windowDidResize(_ notification: Notification) {
-        guard let resizedWindow = notification.object as? NSWindow,
-              resizedWindow === floatingWindow else { return }
-
-        UserDefaults.standard.set(resizedWindow.frame.size.height, forKey: windowHeightKey)
+    func windowWillClose(_: Notification) {
+        // Setup window close does not terminate app (menubar still running)
     }
 
     func applicationWillTerminate(_: Notification) {
-        // Stop the server when app quits
         serverTask?.cancel()
+        menubarController?.cleanup()
         Task {
             await stateServer?.stop()
         }
