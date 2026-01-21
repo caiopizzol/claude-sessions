@@ -74,8 +74,8 @@ EOF
 # Create PkgInfo
 echo -n "APPL????" > "$APP_BUNDLE/Contents/PkgInfo"
 
-# Ad-hoc code sign (required for app to run on modern macOS)
-echo "Code signing (ad-hoc)..."
+# Ad hoc code sign (required for app to run on modern macOS)
+echo "Code signing (ad hoc)..."
 codesign --force --deep --sign - "$APP_BUNDLE"
 
 echo ""
