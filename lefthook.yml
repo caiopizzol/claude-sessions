@@ -7,3 +7,6 @@ pre-commit:
     swiftformat:
       glob: "*.swift"
       run: swiftformat --lint widget/
+    build:
+      glob: "*.swift"
+      run: cd widget && swift build -c debug
