@@ -4,6 +4,8 @@
 
 A macOS utility that monitors all your Claude Code terminal sessions.
 
+<img height="400" alt="screenshot" src="https://github.com/user-attachments/assets/ed936347-5a2d-4603-9c26-3bd8c47c74a2" />
+
 ## Features
 
 - **Real-time status** — See which sessions are generating, waiting, or idle
