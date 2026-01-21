@@ -1,0 +1,22 @@
+# Start minimal, expand as needed
+included:
+  - .
+
+excluded:
+  - .build
+
+# Disable rules that conflict with project style
+disabled_rules:
+  - trailing_whitespace
+  - line_length
+  - identifier_name  # Allow short names (x, y, fd) and snake_case (for JSON keys)
+  - file_length
+  - function_body_length
+  - cyclomatic_complexity
+  - multiple_closures_with_trailing_closure  # Common in SwiftUI
+  - for_where
+
+# Enable helpful opt-in rules
+opt_in_rules:
+  - empty_count
+  - closure_spacing

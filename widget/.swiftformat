@@ -1,0 +1,9 @@
+# Minimal SwiftFormat config
+--swiftversion 5.9
+--indent 4
+--indentcase false
+--trimwhitespace always
+--voidtype void
+--semicolons never
+--commas inline
+--disable wrapMultilineStatementBraces

@@ -1,0 +1,9 @@
+pre-commit:
+  parallel: true
+  commands:
+    swiftlint:
+      glob: "*.swift"
+      run: swiftlint lint --quiet widget/
+    swiftformat:
+      glob: "*.swift"
+      run: swiftformat --lint widget/

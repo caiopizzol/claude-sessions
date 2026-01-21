@@ -1,0 +1,58 @@
+#!/bin/bash
+# Hook: UserPromptSubmit - triggered when user sends a prompt
+
+INPUT=$(cat)
+# Get TTY from parent process (stdin is piped, so `tty` won't work)
+TTY_NAME=$(ps -o tty= -p $PPID 2>/dev/null | tr -d ' ')
+if [[ -n "$TTY_NAME" && "$TTY_NAME" != "??" ]]; then
+    TTY="/dev/$TTY_NAME"
+else
+    TTY="unknown"
+fi
+SESSION_ID=$(echo "$INPUT" | jq -r '.session_id // "unknown"')
+CWD=$(echo "$INPUT" | jq -r '.cwd // "unknown"')
+TRANSCRIPT_PATH=$(echo "$INPUT" | jq -r '.transcript_path // empty')
+SOCKET_PATH="$HOME/.claude/widget/state.sock"
+LOG_FILE="$HOME/.claude/widget/hooks.log"
+
+echo "[$(date)] PromptSubmit: session=$SESSION_ID transcript=$TRANSCRIPT_PATH" >> "$LOG_FILE"
+
+# Extract token usage from transcript if available
+CONTEXT_PCT="null"
+INPUT_TOKENS="null"
+if [ -n "$TRANSCRIPT_PATH" ] && [ -f "$TRANSCRIPT_PATH" ]; then
+    # Get the last line with usage data (usage is nested in .message.usage)
+    USAGE_LINE=$(tail -100 "$TRANSCRIPT_PATH" 2>/dev/null | grep '"usage"' | tail -1)
+    if [ -n "$USAGE_LINE" ]; then
+        # Total context = input_tokens + cache_creation_input_tokens + cache_read_input_tokens
+        USAGE_JSON=$(echo "$USAGE_LINE" | jq -r '.message.usage // empty' 2>/dev/null)
+        if [ -n "$USAGE_JSON" ]; then
+            INPUT_TOKENS=$(echo "$USAGE_JSON" | jq -r '(.input_tokens // 0) + (.cache_creation_input_tokens // 0) + (.cache_read_input_tokens // 0)' 2>/dev/null || echo "0")
+            if [ "$INPUT_TOKENS" != "0" ] && [ "$INPUT_TOKENS" != "null" ]; then
+                # Claude's context window is ~200k tokens
+                CONTEXT_PCT=$(echo "scale=4; $INPUT_TOKENS / 200000" | bc 2>/dev/null || echo "null")
+            fi
+        fi
+    fi
+    echo "[$(date)] Context: transcript=$TRANSCRIPT_PATH tokens=$INPUT_TOKENS pct=$CONTEXT_PCT" >> "$LOG_FILE"
+fi
+
+MSG=$(jq -n \
+  --arg event "generating" \
+  --arg tty "$TTY" \
+  --arg session_id "$SESSION_ID" \
+  --arg cwd "$CWD" \
+  --arg timestamp "$(date +%s)" \
+  --argjson context_percentage "${CONTEXT_PCT:-null}" \
+  --argjson input_tokens "${INPUT_TOKENS:-null}" \
+  '{event: $event, tty: $tty, session_id: $session_id, cwd: $cwd, timestamp: ($timestamp | tonumber), context_percentage: $context_percentage, input_tokens: $input_tokens}')
+
+if [[ -S "$SOCKET_PATH" ]]; then
+    echo "$MSG" | nc -U "$SOCKET_PATH" -w 1 2>>"$LOG_FILE" || \
+    python3 -c "import socket,sys; s=socket.socket(socket.AF_UNIX); s.connect('$SOCKET_PATH'); s.send(sys.stdin.read().encode())" <<< "$MSG" 2>>"$LOG_FILE" || true
+fi
+
+PROJECT=$(basename "$CWD")
+printf '\033]0;🟢 Claude: %s\007' "$PROJECT"
+
+exit 0
