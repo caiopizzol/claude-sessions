@@ -42,7 +42,7 @@ On first launch, the app guides you through:
 ## Usage
 
 1. Start Claude Code in one or more terminal windows
-2. Sessions appear automatically in the floating panel
+2. Sessions appear automatically
 3. Click a session to focus its terminal
 
 The app stays visible across all spaces and doesn't steal focus.
