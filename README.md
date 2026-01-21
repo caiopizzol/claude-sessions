@@ -40,10 +40,10 @@ On first launch, the app guides you through:
 ## Usage
 
 1. Start Claude Code in one or more terminal windows
-2. Sessions appear automatically
+2. Click the menubar icon to see your sessions
 3. Click a session to focus its terminal
 
-The app stays visible across all spaces and doesn't steal focus.
+The menubar icon changes to indicate session status (idle, generating, needs attention).
 
 ## How it works
 
