@@ -1,10 +1,8 @@
-# Claude Sessions
+<img width="400" height="60" alt="logo" src="https://github.com/user-attachments/assets/9de72ea7-a466-4fb5-a8f4-1ed5e078ae21" />
 
 [![GitHub release](https://img.shields.io/github/v/release/caiopizzol/claude-sessions)](https://github.com/caiopizzol/claude-sessions/releases)
 
 A macOS utility that monitors all your Claude Code terminal sessions.
-
-![Claude Sessions Screenshot](docs/screenshot.png)
 
 ## Features
 
