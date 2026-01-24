@@ -6,6 +6,10 @@ struct CollapsiblePanelView: View {
     @ObservedObject var stateManager: StateManager
     @ObservedObject var controller: FloatingPanelController
 
+    private var needsAttention: Bool {
+        controller.attentionCount > 0
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             if controller.isCollapsed {
@@ -24,9 +28,10 @@ struct CollapsiblePanelView: View {
         .clipShape(RoundedRectangle(cornerRadius: 10))
         .overlay(
             RoundedRectangle(cornerRadius: 10)
-                .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                .stroke(needsAttention ? Color.yellow.opacity(0.5) : Color.white.opacity(0.08), lineWidth: needsAttention ? 2 : 1)
         )
-        .shadow(color: .black.opacity(0.4), radius: 12, x: 0, y: 6)
+        .shadow(color: needsAttention ? .yellow.opacity(0.3) : .black.opacity(0.4), radius: needsAttention ? 20 : 12, x: 0, y: 6)
+        .animation(.easeInOut(duration: 1.0).repeatForever(autoreverses: true), value: needsAttention)
     }
 }
 
@@ -65,17 +70,9 @@ struct CollapsedHeaderView: View {
 
             Spacer()
 
-            // Attention badge
+            // Attention badge with pulse
             if controller.attentionCount > 0 {
-                ZStack {
-                    Circle()
-                        .fill(Color.red)
-                        .frame(width: 18, height: 18)
-
-                    Text("\(controller.attentionCount)")
-                        .font(.system(size: 10, weight: .bold))
-                        .foregroundColor(.white)
-                }
+                AttentionBadge(count: controller.attentionCount)
             }
 
             // Expand button
@@ -855,6 +852,38 @@ struct VisualEffectView: NSViewRepresentable {
     func updateNSView(_ nsView: NSVisualEffectView, context _: Context) {
         nsView.material = material
         nsView.blendingMode = blendingMode
+    }
+}
+
+// MARK: - Attention Badge with Pulse
+
+struct AttentionBadge: View {
+    let count: Int
+    @State private var isPulsing = false
+
+    var body: some View {
+        ZStack {
+            // Pulse ring
+            Circle()
+                .stroke(Color.red.opacity(0.5), lineWidth: 2)
+                .frame(width: 24, height: 24)
+                .scaleEffect(isPulsing ? 1.3 : 1.0)
+                .opacity(isPulsing ? 0 : 0.8)
+
+            // Badge
+            Circle()
+                .fill(Color.red)
+                .frame(width: 18, height: 18)
+
+            Text("\(count)")
+                .font(.system(size: 10, weight: .bold))
+                .foregroundColor(.white)
+        }
+        .onAppear {
+            withAnimation(.easeOut(duration: 1.0).repeatForever(autoreverses: false)) {
+                isPulsing = true
+            }
+        }
     }
 }
 
