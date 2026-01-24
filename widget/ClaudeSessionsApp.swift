@@ -1,5 +1,4 @@
 import AppKit
-import Combine
 import SwiftUI
 
 @main
@@ -15,14 +14,12 @@ struct ClaudeSessionsApp: App {
 
 @MainActor
 class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
-    var menubarController: MenubarController?
     var floatingPanelController: FloatingPanelController?
     var setupWindow: NSWindow?
     var stateManager: StateManager?
     var setupManager: SetupManager?
     var stateServer: StateServer?
     private var serverTask: Task<Void, Never>?
-    private var stateObservation: AnyCancellable?
 
     func applicationDidFinishLaunching(_: Notification) {
         // Hide from dock
@@ -37,7 +34,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
         // Check if setup is needed
         if setupManager!.setupComplete {
-            showMenubar()
+            showFloatingPanel()
         } else {
             showSetupWizard()
         }
@@ -47,7 +44,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         let setupView = SetupWizardView(setupManager: setupManager!) { [weak self] in
             self?.setupWindow?.close()
             self?.setupWindow = nil
-            self?.showMenubar()
+            self?.showFloatingPanel()
         }
         let hostingView = NSHostingView(rootView: setupView)
 
@@ -86,33 +83,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         setupWindow = window
     }
 
-    private func showMenubar() {
+    private func showFloatingPanel() {
         guard let stateManager else { return }
-
-        menubarController = MenubarController()
         floatingPanelController = FloatingPanelController(stateManager: stateManager)
-
-        // Observe state changes to update menubar icon
-        stateObservation = stateManager.$sessions
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] sessions in
-                self?.updateMenubarIcon(for: sessions)
-            }
-    }
-
-    private func updateMenubarIcon(for sessions: [ClaudeSession]) {
-        let state =
-            if sessions.isEmpty {
-                SessionState.noSessions
-            } else if sessions.contains(where: { $0.state == "asking" || $0.state == "permission" }) {
-                SessionState.needsAttention
-            } else if sessions.contains(where: { $0.state == "generating" || $0.state == "running" }) {
-                SessionState.generating
-            } else {
-                SessionState.idle
-            }
-
-        menubarController?.updateStatusIcon(for: state)
     }
 
     func windowWillClose(_: Notification) {
@@ -121,7 +94,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     func applicationWillTerminate(_: Notification) {
         serverTask?.cancel()
-        menubarController?.cleanup()
         floatingPanelController?.cleanup()
         Task {
             await stateServer?.stop()

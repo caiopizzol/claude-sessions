@@ -86,16 +86,12 @@ class FloatingPanelController: NSObject, NSWindowDelegate, ObservableObject {
     }
 
     private func setupStateObservation() {
-        // Auto-expand when any session needs attention
+        // Observe session changes for attention count updates
         stateObservation = stateManager.$sessions
             .receive(on: DispatchQueue.main)
-            .sink { [weak self] sessions in
-                let needsAttention = sessions.contains {
-                    $0.state == "asking" || $0.state == "permission"
-                }
-                if needsAttention, self?.isCollapsed == true {
-                    self?.isCollapsed = false
-                }
+            .sink { [weak self] _ in
+                // Trigger UI update for attention badge
+                self?.objectWillChange.send()
             }
     }
 

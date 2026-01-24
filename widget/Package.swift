@@ -13,7 +13,6 @@ let package = Package(
             exclude: ["AppIcon.icns"],
             sources: [
                 "ClaudeSessionsApp.swift",
-                "MenubarController.swift",
                 "FloatingPanelController.swift",
                 "StateManager.swift",
                 "FloatingPanelView.swift",
