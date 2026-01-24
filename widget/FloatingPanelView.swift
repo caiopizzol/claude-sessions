@@ -1,5 +1,322 @@
 import SwiftUI
 
+// MARK: - Collapsible Panel (New Main View)
+
+struct CollapsiblePanelView: View {
+    @ObservedObject var stateManager: StateManager
+    @ObservedObject var controller: FloatingPanelController
+
+    var body: some View {
+        VStack(spacing: 0) {
+            if controller.isCollapsed {
+                CollapsedHeaderView(
+                    stateManager: stateManager,
+                    controller: controller
+                )
+            } else {
+                ExpandedPanelView(
+                    stateManager: stateManager,
+                    controller: controller
+                )
+            }
+        }
+        .background(Color(white: 0.12))
+        .clipShape(RoundedRectangle(cornerRadius: 10))
+        .overlay(
+            RoundedRectangle(cornerRadius: 10)
+                .stroke(Color.white.opacity(0.08), lineWidth: 1)
+        )
+        .shadow(color: .black.opacity(0.4), radius: 12, x: 0, y: 6)
+    }
+}
+
+// MARK: - Collapsed Header (Icon + Pills + Badge)
+
+struct CollapsedHeaderView: View {
+    @ObservedObject var stateManager: StateManager
+    @ObservedObject var controller: FloatingPanelController
+    @State private var isHovering = false
+
+    var body: some View {
+        HStack(spacing: 10) {
+            // App icon
+            AppIconView(size: 20)
+
+            // Status dots (max 6)
+            HStack(spacing: 4) {
+                ForEach(stateManager.sessions.prefix(6)) { session in
+                    Circle()
+                        .fill(session.stateColor)
+                        .frame(width: 8, height: 8)
+                        .shadow(color: session.stateColor.opacity(0.5), radius: 2)
+                }
+
+                if stateManager.sessions.isEmpty {
+                    Circle()
+                        .stroke(Color.white.opacity(0.3), lineWidth: 1)
+                        .frame(width: 8, height: 8)
+                }
+            }
+
+            // Session count
+            Text("\(stateManager.sessions.count)")
+                .font(.system(size: 11, weight: .medium))
+                .foregroundColor(.white.opacity(0.6))
+
+            Spacer()
+
+            // Attention badge
+            if controller.attentionCount > 0 {
+                ZStack {
+                    Circle()
+                        .fill(Color.red)
+                        .frame(width: 18, height: 18)
+
+                    Text("\(controller.attentionCount)")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundColor(.white)
+                }
+            }
+
+            // Expand button
+            Button(action: { controller.toggleCollapsed() }) {
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundColor(.white.opacity(0.5))
+                    .frame(width: 20, height: 20)
+                    .background(Color.white.opacity(isHovering ? 0.1 : 0))
+                    .clipShape(RoundedRectangle(cornerRadius: 4))
+            }
+            .buttonStyle(.plain)
+            .onHover { isHovering = $0 }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .frame(height: 40)
+        .contentShape(Rectangle())
+        .onTapGesture(count: 2) {
+            controller.toggleCollapsed()
+        }
+    }
+}
+
+// MARK: - Expanded Panel View
+
+struct ExpandedPanelView: View {
+    @ObservedObject var stateManager: StateManager
+    @ObservedObject var controller: FloatingPanelController
+    @State private var isCollapseHovering = false
+
+    var body: some View {
+        VStack(spacing: 0) {
+            // Header with icon + title + collapse button
+            HStack(spacing: 10) {
+                // App icon
+                AppIconView(size: 18)
+
+                Text("Claude Sessions")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(.white.opacity(0.8))
+
+                Spacer()
+
+                // Collapse button
+                Button(action: { controller.toggleCollapsed() }) {
+                    Image(systemName: "chevron.up")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundColor(.white.opacity(0.5))
+                        .frame(width: 20, height: 20)
+                        .background(Color.white.opacity(isCollapseHovering ? 0.1 : 0))
+                        .clipShape(RoundedRectangle(cornerRadius: 4))
+                }
+                .buttonStyle(.plain)
+                .onHover { isCollapseHovering = $0 }
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+            .background(Color.black.opacity(0.3))
+
+            // Session list
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 0) {
+                    if stateManager.sessions.isEmpty {
+                        EmptyStateView(isConnected: stateManager.isConnected)
+                    } else {
+                        ForEach(stateManager.sessions) { session in
+                            DetailedSessionCard(
+                                session: session,
+                                onTap: { stateManager.focusSession(session) },
+                                onRename: { newName in
+                                    Task {
+                                        await stateManager.renameSession(session.session_id, to: newName)
+                                    }
+                                }
+                            )
+
+                            if session.id != stateManager.sessions.last?.id {
+                                Divider()
+                                    .background(Color.white.opacity(0.05))
+                            }
+                        }
+                    }
+                }
+            }
+            .frame(minHeight: 150, maxHeight: 320)
+
+            // Footer
+            HStack {
+                let count = stateManager.sessions.count
+                Text(count == 0 ? "No sessions" : "\(count) session\(count == 1 ? "" : "s")")
+                    .font(.system(size: 10))
+                    .foregroundColor(.white.opacity(0.4))
+
+                Spacer()
+
+                // Quit button
+                Button(action: { NSApp.terminate(nil) }) {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 9, weight: .semibold))
+                        .foregroundColor(.white.opacity(0.4))
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(Color.black.opacity(0.2))
+        }
+        .frame(width: 300)
+    }
+}
+
+// MARK: - Detailed Session Card
+
+struct DetailedSessionCard: View {
+    let session: ClaudeSession
+    let onTap: () -> Void
+    let onRename: (String) -> Void
+    @State private var isHovering = false
+    @State private var isEditing = false
+    @State private var editText = ""
+    @FocusState private var isTextFieldFocused: Bool
+
+    private var needsAttention: Bool {
+        session.state == "asking" || session.state == "permission"
+    }
+
+    private var timeAgo: String {
+        // Calculate time since last update
+        let timestamp = session.timestamp
+        let now = Int(Date().timeIntervalSince1970 * 1000)
+        let diffMs = now - timestamp
+        let diffSec = diffMs / 1000
+
+        if diffSec < 60 {
+            return "just now"
+        } else if diffSec < 3600 {
+            let mins = diffSec / 60
+            return "\(mins)m"
+        } else {
+            let hours = diffSec / 3600
+            return "\(hours)h"
+        }
+    }
+
+    var body: some View {
+        Button(action: {
+            guard !isEditing else { return }
+            onTap()
+        }) {
+            VStack(alignment: .leading, spacing: 4) {
+                // Top row: dot + name + time
+                HStack(spacing: 8) {
+                    Circle()
+                        .fill(session.stateColor)
+                        .frame(width: 8, height: 8)
+                        .shadow(color: session.stateColor.opacity(0.5), radius: 2)
+
+                    if isEditing {
+                        TextField("Session name", text: $editText)
+                            .textFieldStyle(.plain)
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(.white)
+                            .focused($isTextFieldFocused)
+                            .onSubmit {
+                                onRename(editText)
+                                isEditing = false
+                            }
+                            .onExitCommand {
+                                isEditing = false
+                            }
+                    } else {
+                        Text(session.displayName.isEmpty ? "Unknown" : session.displayName)
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(.white)
+                            .lineLimit(1)
+                    }
+
+                    Spacer()
+
+                    Text(timeAgo)
+                        .font(.system(size: 10))
+                        .foregroundColor(.white.opacity(0.5))
+                }
+
+                // Bottom row: state + context %
+                HStack {
+                    Text(session.stateDescription)
+                        .font(.system(size: 10))
+                        .foregroundColor(.white.opacity(0.6))
+
+                    Spacer()
+
+                    if let pct = session.context_percentage {
+                        Text("\(Int(pct * 100))%")
+                            .font(.system(size: 10))
+                            .foregroundColor(session.contextRingColor)
+                    }
+                }
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+            .background(Color.white.opacity(isHovering ? 0.05 : 0))
+            .overlay(
+                // Left border accent for attention
+                Rectangle()
+                    .fill(needsAttention ? Color.yellow : Color.clear)
+                    .frame(width: 3),
+                alignment: .leading
+            )
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .contextMenu {
+            Button("Rename...") {
+                editText = session.displayName
+                isEditing = true
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    isTextFieldFocused = true
+                }
+            }
+            Button("Reset to Default") {
+                onRename("")
+            }
+            .disabled(session.customName == nil)
+        }
+        .onHover { hovering in
+            withAnimation(.easeInOut(duration: 0.1)) {
+                isHovering = hovering
+            }
+            if hovering {
+                NSCursor.pointingHand.push()
+            } else {
+                NSCursor.pop()
+            }
+        }
+    }
+}
+
+// MARK: - Original Floating Panel (kept for reference, may be removed)
+
 struct FloatingPanelView: View {
     @ObservedObject var stateManager: StateManager
     @State private var isCloseHovering = false

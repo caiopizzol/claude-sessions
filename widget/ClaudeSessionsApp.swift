@@ -16,6 +16,7 @@ struct ClaudeSessionsApp: App {
 @MainActor
 class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     var menubarController: MenubarController?
+    var floatingPanelController: FloatingPanelController?
     var setupWindow: NSWindow?
     var stateManager: StateManager?
     var setupManager: SetupManager?
@@ -88,7 +89,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private func showMenubar() {
         guard let stateManager else { return }
 
-        menubarController = MenubarController(stateManager: stateManager)
+        menubarController = MenubarController()
+        floatingPanelController = FloatingPanelController(stateManager: stateManager)
 
         // Observe state changes to update menubar icon
         stateObservation = stateManager.$sessions
@@ -120,6 +122,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     func applicationWillTerminate(_: Notification) {
         serverTask?.cancel()
         menubarController?.cleanup()
+        floatingPanelController?.cleanup()
         Task {
             await stateServer?.stop()
         }

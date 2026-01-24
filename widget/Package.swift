@@ -14,6 +14,7 @@ let package = Package(
             sources: [
                 "ClaudeSessionsApp.swift",
                 "MenubarController.swift",
+                "FloatingPanelController.swift",
                 "StateManager.swift",
                 "FloatingPanelView.swift",
                 "StateServer.swift",
