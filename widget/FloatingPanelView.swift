@@ -5,6 +5,7 @@ import SwiftUI
 struct CollapsiblePanelView: View {
     @ObservedObject var stateManager: StateManager
     @ObservedObject var controller: FloatingPanelController
+    @State private var glowIntensity: Double = 0
 
     private var needsAttention: Bool {
         controller.attentionCount > 0
@@ -28,10 +29,41 @@ struct CollapsiblePanelView: View {
         .clipShape(RoundedRectangle(cornerRadius: 10))
         .overlay(
             RoundedRectangle(cornerRadius: 10)
-                .stroke(needsAttention ? Color.yellow.opacity(0.5) : Color.white.opacity(0.08), lineWidth: needsAttention ? 2 : 1)
+                .stroke(
+                    needsAttention ? Color.yellow.opacity(0.3 + glowIntensity * 0.3) : Color.white.opacity(0.08),
+                    lineWidth: needsAttention ? 2 : 1
+                )
         )
-        .shadow(color: needsAttention ? .yellow.opacity(0.3) : .black.opacity(0.4), radius: needsAttention ? 20 : 12, x: 0, y: 6)
-        .animation(.easeInOut(duration: 1.0).repeatForever(autoreverses: true), value: needsAttention)
+        .shadow(
+            color: needsAttention ? .yellow.opacity(0.2 + glowIntensity * 0.2) : .black.opacity(0.4),
+            radius: needsAttention ? 15 + glowIntensity * 10 : 12,
+            x: 0,
+            y: 6
+        )
+        .onChange(of: needsAttention) { attention in
+            if attention {
+                startGlowAnimation()
+            } else {
+                stopGlowAnimation()
+            }
+        }
+        .onAppear {
+            if needsAttention {
+                startGlowAnimation()
+            }
+        }
+    }
+
+    private func startGlowAnimation() {
+        withAnimation(.easeInOut(duration: 1.0).repeatForever(autoreverses: true)) {
+            glowIntensity = 1.0
+        }
+    }
+
+    private func stopGlowAnimation() {
+        withAnimation(.easeOut(duration: 0.3)) {
+            glowIntensity = 0
+        }
     }
 }
 
@@ -200,24 +232,6 @@ struct DetailedSessionCard: View {
         session.state == "asking" || session.state == "permission"
     }
 
-    private var timeAgo: String {
-        // Calculate time since last update
-        let timestamp = session.timestamp
-        let now = Int(Date().timeIntervalSince1970 * 1000)
-        let diffMs = now - timestamp
-        let diffSec = diffMs / 1000
-
-        if diffSec < 60 {
-            return "just now"
-        } else if diffSec < 3600 {
-            let mins = diffSec / 60
-            return "\(mins)m"
-        } else {
-            let hours = diffSec / 3600
-            return "\(hours)h"
-        }
-    }
-
     var body: some View {
         Button(action: {
             guard !isEditing else { return }
@@ -252,10 +266,6 @@ struct DetailedSessionCard: View {
                     }
 
                     Spacer()
-
-                    Text(timeAgo)
-                        .font(.system(size: 10))
-                        .foregroundColor(.white.opacity(0.5))
                 }
 
                 // Bottom row: state + context %
