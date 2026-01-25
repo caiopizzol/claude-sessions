@@ -86,7 +86,7 @@ struct CollapsedHeaderView: View {
         .padding(.vertical, 10)
         .frame(height: 40)
         .contentShape(Rectangle())
-        .onTapGesture(count: 2) {
+        .onTapGesture {
             controller.toggleCollapsed()
         }
     }
@@ -97,7 +97,6 @@ struct CollapsedHeaderView: View {
 struct ExpandedPanelView: View {
     @ObservedObject var stateManager: StateManager
     @ObservedObject var controller: FloatingPanelController
-    @State private var isCollapseHovering = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -112,21 +111,18 @@ struct ExpandedPanelView: View {
 
                 Spacer()
 
-                // Collapse button
-                Button(action: { controller.toggleCollapsed() }) {
-                    Image(systemName: "chevron.up")
-                        .font(.system(size: 10, weight: .semibold))
-                        .foregroundColor(.white.opacity(0.5))
-                        .frame(width: 20, height: 20)
-                        .background(Color.white.opacity(isCollapseHovering ? 0.1 : 0))
-                        .clipShape(RoundedRectangle(cornerRadius: 4))
-                }
-                .buttonStyle(.plain)
-                .onHover { isCollapseHovering = $0 }
+                // Collapse indicator
+                Image(systemName: "chevron.up")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundColor(.white.opacity(0.5))
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 10)
             .background(Color.black.opacity(0.3))
+            .contentShape(Rectangle())
+            .onTapGesture {
+                controller.toggleCollapsed()
+            }
 
             // Session list
             ScrollView(showsIndicators: false) {
