@@ -192,69 +192,80 @@ struct DetailedSessionCard: View {
     }
 
     var body: some View {
-        Button(action: {
-            guard !isEditing else { return }
-            onTap()
-        }) {
-            VStack(alignment: .leading, spacing: 4) {
-                // Top row: dot + name + time
-                HStack(spacing: 8) {
-                    Circle()
-                        .fill(session.stateColor)
-                        .frame(width: 8, height: 8)
-                        .shadow(color: session.stateColor.opacity(0.5), radius: 2)
+        VStack(alignment: .leading, spacing: 4) {
+            // Top row: dot + name + time
+            HStack(spacing: 8) {
+                Circle()
+                    .fill(session.stateColor)
+                    .frame(width: 8, height: 8)
+                    .shadow(color: session.stateColor.opacity(0.5), radius: 2)
 
-                    if isEditing {
-                        TextField("Session name", text: $editText)
-                            .textFieldStyle(.plain)
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundColor(.white)
-                            .focused($isTextFieldFocused)
-                            .onSubmit {
+                if isEditing {
+                    TextField("Session name", text: $editText)
+                        .textFieldStyle(.plain)
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(.white)
+                        .focused($isTextFieldFocused)
+                        .onSubmit {
+                            onRename(editText)
+                            isEditing = false
+                        }
+                        .onExitCommand {
+                            isEditing = false
+                        }
+                        .onChange(of: isTextFieldFocused) { focused in
+                            if !focused, isEditing {
                                 onRename(editText)
                                 isEditing = false
                             }
-                            .onExitCommand {
-                                isEditing = false
-                            }
-                    } else {
-                        Text(session.displayName.isEmpty ? "Unknown" : session.displayName)
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundColor(.white)
-                            .lineLimit(1)
-                    }
-
-                    Spacer()
+                        }
+                } else {
+                    Text(session.displayName.isEmpty ? "Unknown" : session.displayName)
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(.white)
+                        .lineLimit(1)
                 }
 
-                // Bottom row: state + context %
-                HStack {
-                    Text(session.stateDescription)
+                Spacer()
+            }
+
+            // Bottom row: state + context %
+            HStack {
+                Text(session.stateDescription)
+                    .font(.system(size: 10))
+                    .foregroundColor(.white.opacity(0.6))
+
+                Spacer()
+
+                if let pct = session.context_percentage {
+                    Text("\(Int(pct * 100))%")
                         .font(.system(size: 10))
-                        .foregroundColor(.white.opacity(0.6))
-
-                    Spacer()
-
-                    if let pct = session.context_percentage {
-                        Text("\(Int(pct * 100))%")
-                            .font(.system(size: 10))
-                            .foregroundColor(session.contextRingColor)
-                    }
+                        .foregroundColor(session.contextRingColor)
                 }
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 10)
-            .background(Color.white.opacity(isHovering ? 0.05 : 0))
-            .overlay(
-                // Left border accent for attention
-                Rectangle()
-                    .fill(needsAttention ? Color.yellow : Color.clear)
-                    .frame(width: 3),
-                alignment: .leading
-            )
-            .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .background(Color.white.opacity(isHovering ? 0.05 : 0))
+        .overlay(
+            // Left border accent for attention
+            Rectangle()
+                .fill(needsAttention ? Color.yellow : Color.clear)
+                .frame(width: 3),
+            alignment: .leading
+        )
+        .contentShape(Rectangle())
+        .onTapGesture(count: 2) {
+            editText = session.displayName
+            isEditing = true
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                isTextFieldFocused = true
+            }
+        }
+        .onTapGesture(count: 1) {
+            guard !isEditing else { return }
+            onTap()
+        }
         .contextMenu {
             Button("Rename...") {
                 editText = session.displayName
@@ -513,73 +524,84 @@ struct GroupedSessionCardView: View {
     @FocusState private var isTextFieldFocused: Bool
 
     var body: some View {
-        Button(action: {
-            guard !isEditing else { return }
-            onTap()
-        }) {
-            HStack(spacing: 10) {
-                // Status indicator
-                ZStack {
-                    Circle()
-                        .fill(session.stateColor.opacity(0.15))
-                        .frame(width: 28, height: 28)
+        HStack(spacing: 10) {
+            // Status indicator
+            ZStack {
+                Circle()
+                    .fill(session.stateColor.opacity(0.15))
+                    .frame(width: 28, height: 28)
 
-                    Circle()
-                        .stroke(Color.primary.opacity(0.1), lineWidth: 2)
-                        .frame(width: 24, height: 24)
+                Circle()
+                    .stroke(Color.primary.opacity(0.1), lineWidth: 2)
+                    .frame(width: 24, height: 24)
 
-                    Circle()
-                        .trim(from: 0, to: session.context_percentage ?? 0)
-                        .stroke(session.contextRingColor, style: StrokeStyle(lineWidth: 2, lineCap: .round))
-                        .frame(width: 24, height: 24)
-                        .rotationEffect(.degrees(-90))
+                Circle()
+                    .trim(from: 0, to: session.context_percentage ?? 0)
+                    .stroke(session.contextRingColor, style: StrokeStyle(lineWidth: 2, lineCap: .round))
+                    .frame(width: 24, height: 24)
+                    .rotationEffect(.degrees(-90))
 
-                    Circle()
-                        .fill(session.stateColor)
-                        .frame(width: 8, height: 8)
-                        .shadow(color: session.stateColor.opacity(0.6), radius: 3)
-                }
+                Circle()
+                    .fill(session.stateColor)
+                    .frame(width: 8, height: 8)
+                    .shadow(color: session.stateColor.opacity(0.6), radius: 3)
+            }
 
-                VStack(alignment: .leading, spacing: 1) {
-                    if isEditing {
-                        TextField("Session name", text: $editText)
-                            .textFieldStyle(.plain)
-                            .font(.system(size: 12, weight: .medium, design: .monospaced))
-                            .foregroundColor(.primary)
-                            .focused($isTextFieldFocused)
-                            .onSubmit {
+            VStack(alignment: .leading, spacing: 1) {
+                if isEditing {
+                    TextField("Session name", text: $editText)
+                        .textFieldStyle(.plain)
+                        .font(.system(size: 12, weight: .medium, design: .monospaced))
+                        .foregroundColor(.primary)
+                        .focused($isTextFieldFocused)
+                        .onSubmit {
+                            onRename(editText)
+                            isEditing = false
+                        }
+                        .onExitCommand {
+                            isEditing = false
+                        }
+                        .onChange(of: isTextFieldFocused) { focused in
+                            if !focused, isEditing {
                                 onRename(editText)
                                 isEditing = false
                             }
-                            .onExitCommand {
-                                isEditing = false
-                            }
-                    } else {
-                        Text(session.displayName.isEmpty ? "Unknown" : session.displayName)
-                            .font(.system(size: 12, weight: .medium, design: .monospaced))
-                            .foregroundColor(.primary)
-                            .lineLimit(1)
-                    }
-
-                    Text(session.stateDescription)
-                        .font(.system(size: 10))
-                        .foregroundColor(.secondary)
+                        }
+                } else {
+                    Text(session.displayName.isEmpty ? "Unknown" : session.displayName)
+                        .font(.system(size: 12, weight: .medium, design: .monospaced))
+                        .foregroundColor(.primary)
+                        .lineLimit(1)
                 }
 
-                Spacer()
-
-                if isHovering {
-                    Image(systemName: "arrow.right.circle")
-                        .font(.system(size: 14))
-                        .foregroundColor(.secondary)
-                }
+                Text(session.stateDescription)
+                    .font(.system(size: 10))
+                    .foregroundColor(.secondary)
             }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 8)
-            .background(Color.primary.opacity(isHovering ? 0.05 : 0))
-            .contentShape(Rectangle())
+
+            Spacer()
+
+            if isHovering {
+                Image(systemName: "arrow.right.circle")
+                    .font(.system(size: 14))
+                    .foregroundColor(.secondary)
+            }
         }
-        .buttonStyle(.plain)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .background(Color.primary.opacity(isHovering ? 0.05 : 0))
+        .contentShape(Rectangle())
+        .onTapGesture(count: 2) {
+            editText = session.displayName
+            isEditing = true
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                isTextFieldFocused = true
+            }
+        }
+        .onTapGesture(count: 1) {
+            guard !isEditing else { return }
+            onTap()
+        }
         .contextMenu {
             Button("Rename...") {
                 editText = session.displayName
@@ -618,103 +640,115 @@ struct SessionCardView: View {
     @FocusState private var isTextFieldFocused: Bool
 
     var body: some View {
-        Button(action: {
-            guard !isEditing else { return }
-            onTap()
-        }) {
-            HStack(spacing: 12) {
-                // Status indicator with context ring
-                ZStack {
-                    // Background circle
-                    Circle()
-                        .fill(session.stateColor.opacity(0.15))
-                        .frame(width: 32, height: 32)
+        HStack(spacing: 12) {
+            // Status indicator with context ring
+            ZStack {
+                // Background circle
+                Circle()
+                    .fill(session.stateColor.opacity(0.15))
+                    .frame(width: 32, height: 32)
 
-                    // Context ring (track)
-                    Circle()
-                        .stroke(Color.primary.opacity(0.1), lineWidth: 2.5)
-                        .frame(width: 28, height: 28)
+                // Context ring (track)
+                Circle()
+                    .stroke(Color.primary.opacity(0.1), lineWidth: 2.5)
+                    .frame(width: 28, height: 28)
 
-                    // Context ring (progress)
-                    Circle()
-                        .trim(from: 0, to: session.context_percentage ?? 0)
-                        .stroke(
-                            session.contextRingColor,
-                            style: StrokeStyle(lineWidth: 2.5, lineCap: .round)
-                        )
-                        .frame(width: 28, height: 28)
-                        .rotationEffect(.degrees(-90))
+                // Context ring (progress)
+                Circle()
+                    .trim(from: 0, to: session.context_percentage ?? 0)
+                    .stroke(
+                        session.contextRingColor,
+                        style: StrokeStyle(lineWidth: 2.5, lineCap: .round)
+                    )
+                    .frame(width: 28, height: 28)
+                    .rotationEffect(.degrees(-90))
 
-                    // Status dot (centered)
-                    Circle()
-                        .fill(session.stateColor)
-                        .frame(width: 10, height: 10)
-                        .shadow(color: session.stateColor.opacity(0.6), radius: 4)
+                // Status dot (centered)
+                Circle()
+                    .fill(session.stateColor)
+                    .frame(width: 10, height: 10)
+                    .shadow(color: session.stateColor.opacity(0.6), radius: 4)
 
-                    // Pulsing animation for generating state
-                    if session.state == "generating" {
-                        Circle()
-                            .stroke(session.stateColor.opacity(0.4), lineWidth: 1.5)
-                            .frame(width: 20, height: 20)
-                            .scaleEffect(isHovering ? 1.3 : 1.0)
-                            .animation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true), value: isHovering)
-                    }
+                // Pulsing animation for generating state
+                if session.state == "generating" {
+                    Circle()
+                        .stroke(session.stateColor.opacity(0.4), lineWidth: 1.5)
+                        .frame(width: 20, height: 20)
+                        .scaleEffect(isHovering ? 1.3 : 1.0)
+                        .animation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true), value: isHovering)
                 }
+            }
 
-                VStack(alignment: .leading, spacing: 2) {
-                    if isEditing {
-                        TextField("Session name", text: $editText)
-                            .textFieldStyle(.plain)
-                            .font(.system(size: 13, weight: .medium, design: .monospaced))
-                            .foregroundColor(.primary)
-                            .focused($isTextFieldFocused)
-                            .onSubmit {
+            VStack(alignment: .leading, spacing: 2) {
+                if isEditing {
+                    TextField("Session name", text: $editText)
+                        .textFieldStyle(.plain)
+                        .font(.system(size: 13, weight: .medium, design: .monospaced))
+                        .foregroundColor(.primary)
+                        .focused($isTextFieldFocused)
+                        .onSubmit {
+                            onRename(editText)
+                            isEditing = false
+                        }
+                        .onExitCommand {
+                            isEditing = false
+                        }
+                        .onChange(of: isTextFieldFocused) { focused in
+                            if !focused, isEditing {
                                 onRename(editText)
                                 isEditing = false
                             }
-                            .onExitCommand {
-                                isEditing = false
-                            }
-                    } else {
-                        HStack(spacing: 6) {
-                            Text(session.displayName.isEmpty ? "Unknown Project" : session.displayName)
-                                .font(.system(size: 13, weight: .medium, design: .monospaced))
-                                .foregroundColor(.primary)
-                                .lineLimit(1)
-                                .help(session.displayName.isEmpty ? "Unknown Project" : session.displayName)
+                        }
+                } else {
+                    HStack(spacing: 6) {
+                        Text(session.displayName.isEmpty ? "Unknown Project" : session.displayName)
+                            .font(.system(size: 13, weight: .medium, design: .monospaced))
+                            .foregroundColor(.primary)
+                            .lineLimit(1)
+                            .help(session.displayName.isEmpty ? "Unknown Project" : session.displayName)
 
-                            // Context percentage badge (appears on hover)
-                            if isHovering, let pct = session.context_percentage {
-                                Text("[\(Int(pct * 100))%]")
-                                    .font(.system(size: 10, design: .monospaced))
-                                    .foregroundColor(.secondary)
-                                    .transition(.opacity)
-                            }
+                        // Context percentage badge (appears on hover)
+                        if isHovering, let pct = session.context_percentage {
+                            Text("[\(Int(pct * 100))%]")
+                                .font(.system(size: 10, design: .monospaced))
+                                .foregroundColor(.secondary)
+                                .transition(.opacity)
                         }
                     }
-
-                    Text(session.stateDescription)
-                        .font(.system(size: 11))
-                        .foregroundColor(.secondary)
                 }
 
-                Spacer()
-
-                Image(systemName: "arrow.right.circle")
-                    .font(.system(size: 16))
-                    .foregroundColor(isHovering ? .primary.opacity(0.8) : .secondary)
+                Text(session.stateDescription)
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
             }
-            .padding(12)
-            .background(
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(Color.primary.opacity(isHovering ? 0.08 : 0.04))
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 8)
-                    .stroke(Color.primary.opacity(isHovering ? 0.15 : 0.08), lineWidth: 1)
-            )
+
+            Spacer()
+
+            Image(systemName: "arrow.right.circle")
+                .font(.system(size: 16))
+                .foregroundColor(isHovering ? .primary.opacity(0.8) : .secondary)
         }
-        .buttonStyle(.plain)
+        .padding(12)
+        .background(
+            RoundedRectangle(cornerRadius: 8)
+                .fill(Color.primary.opacity(isHovering ? 0.08 : 0.04))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(Color.primary.opacity(isHovering ? 0.15 : 0.08), lineWidth: 1)
+        )
+        .contentShape(Rectangle())
+        .onTapGesture(count: 2) {
+            editText = session.displayName
+            isEditing = true
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                isTextFieldFocused = true
+            }
+        }
+        .onTapGesture(count: 1) {
+            guard !isEditing else { return }
+            onTap()
+        }
         .contextMenu {
             Button("Rename...") {
                 editText = session.displayName
