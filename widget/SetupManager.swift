@@ -83,7 +83,7 @@ class SetupManager: ObservableObject {
             let bundleHooksPath = bundlePath + "/hooks"
 
             // Copy hooks from bundle to ~/.claude/hooks/
-            let hookFiles = ["session-start.sh", "prompt-submit.sh", "stop.sh", "session-end.sh"]
+            let hookFiles = ["session-start.sh", "prompt-submit.sh", "stop.sh", "session-end.sh", "statusline.sh"]
             for hookFile in hookFiles {
                 let source = bundleHooksPath + "/" + hookFile
                 let dest = hooksDir + "/" + hookFile
@@ -182,6 +182,13 @@ class SetupManager: ObservableObject {
         ]
 
         settings["hooks"] = hooks
+
+        // Add statusLine configuration for accurate context tracking
+        settings["statusLine"] = [
+            "type": "command",
+            "command": "\(hooksDir)/statusline.sh",
+            "padding": 0
+        ] as [String: Any]
 
         let jsonData = try JSONSerialization.data(withJSONObject: settings, options: [.prettyPrinted, .sortedKeys])
         try jsonData.write(to: URL(fileURLWithPath: claudeSettingsPath))

@@ -187,23 +187,31 @@ actor StateServer {
             let contextPercentage = json["context_percentage"] as? Double
             let inputTokens = json["input_tokens"] as? Int
 
+            // Preserve existing context data if new event doesn't include it
+            let existingSession = sessions[sessionId]
+            let finalContextPercentage = contextPercentage ?? existingSession?.context_percentage
+            let finalInputTokens = inputTokens ?? existingSession?.input_tokens
+
+            // For "status" events, preserve the existing state (generating/ready)
+            let finalState = eventType == "status" ? (existingSession?.state ?? eventType) : eventType
+
             let session = SessionData(
                 session_id: sessionId,
-                state: eventType,
-                tty: json["tty"] as? String ?? "",
-                cwd: cwd,
-                project: project,
+                state: finalState,
+                tty: json["tty"] as? String ?? existingSession?.tty ?? "",
+                cwd: cwd.isEmpty ? (existingSession?.cwd ?? "") : cwd,
+                project: project.isEmpty ? (existingSession?.project ?? "") : project,
                 last_update: ISO8601DateFormatter().string(from: Date()),
-                timestamp: json["timestamp"] as? Int ?? 0,
-                context_percentage: contextPercentage,
-                input_tokens: inputTokens
+                timestamp: json["timestamp"] as? Int ?? existingSession?.timestamp ?? 0,
+                context_percentage: finalContextPercentage,
+                input_tokens: finalInputTokens
             )
 
             sessions[sessionId] = session
-            if let pct = contextPercentage {
-                print("Session \(sessionId): \(eventType) (context: \(Int(pct * 100))%)")
+            if let pct = finalContextPercentage {
+                print("Session \(sessionId): \(finalState) (context: \(Int(pct * 100))%)")
             } else {
-                print("Session \(sessionId): \(eventType)")
+                print("Session \(sessionId): \(finalState)")
             }
         }
     }
