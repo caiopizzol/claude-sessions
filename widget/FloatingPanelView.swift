@@ -97,6 +97,7 @@ struct CollapsedHeaderView: View {
 struct ExpandedPanelView: View {
     @ObservedObject var stateManager: StateManager
     @ObservedObject var controller: FloatingPanelController
+    @State private var selectedSessionId: String?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -133,7 +134,11 @@ struct ExpandedPanelView: View {
                         ForEach(stateManager.sessions) { session in
                             DetailedSessionCard(
                                 session: session,
-                                onTap: { stateManager.focusSession(session) },
+                                isSelected: selectedSessionId == session.session_id,
+                                onTap: {
+                                    selectedSessionId = session.session_id
+                                    stateManager.focusSession(session)
+                                },
                                 onRename: { newName in
                                     Task {
                                         await stateManager.renameSession(session.session_id, to: newName)
@@ -180,6 +185,7 @@ struct ExpandedPanelView: View {
 
 struct DetailedSessionCard: View {
     let session: ClaudeSession
+    let isSelected: Bool
     let onTap: () -> Void
     let onRename: (String) -> Void
     @State private var isHovering = false
@@ -260,7 +266,21 @@ struct DetailedSessionCard: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
-        .background(Color.white.opacity(isHovering ? 0.05 : 0))
+        .background(
+            RoundedRectangle(cornerRadius: 6)
+                .fill(Color.white.opacity(isHovering ? 0.05 : 0))
+        )
+        .background(
+            RoundedRectangle(cornerRadius: 6)
+                .fill(isSelected ? Color.accentColor.opacity(0.03) : Color.clear)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 6)
+                .stroke(
+                    isSelected ? Color.accentColor.opacity(0.8) : Color.clear,
+                    lineWidth: 1.5
+                )
+        )
         .overlay(
             // Left border accent for attention
             Rectangle()
@@ -302,11 +322,6 @@ struct DetailedSessionCard: View {
         .onHover { hovering in
             withAnimation(.easeInOut(duration: 0.1)) {
                 isHovering = hovering
-            }
-            if hovering {
-                NSCursor.pointingHand.push()
-            } else {
-                NSCursor.pop()
             }
         }
     }
@@ -646,11 +661,6 @@ struct GroupedSessionCardView: View {
             withAnimation(.easeInOut(duration: 0.1)) {
                 isHovering = hovering
             }
-            if hovering {
-                NSCursor.pointingHand.push()
-            } else {
-                NSCursor.pop()
-            }
         }
     }
 }
@@ -798,11 +808,6 @@ struct SessionCardView: View {
         .onHover { hovering in
             withAnimation(.easeInOut(duration: 0.15)) {
                 isHovering = hovering
-            }
-            if hovering {
-                NSCursor.pointingHand.push()
-            } else {
-                NSCursor.pop()
             }
         }
         .onAppear {
