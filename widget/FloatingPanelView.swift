@@ -256,6 +256,7 @@ struct DetailedSessionCard: View {
         )
         .contentShape(Rectangle())
         .onTapGesture(count: 2) {
+            NSApp.activate(ignoringOtherApps: true)
             editText = session.displayName
             isEditing = true
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
@@ -263,11 +264,16 @@ struct DetailedSessionCard: View {
             }
         }
         .onTapGesture(count: 1) {
-            guard !isEditing else { return }
-            onTap()
+            if isEditing {
+                onRename(editText)
+                isEditing = false
+            } else {
+                onTap()
+            }
         }
         .contextMenu {
             Button("Rename...") {
+                NSApp.activate(ignoringOtherApps: true)
                 editText = session.displayName
                 isEditing = true
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
@@ -471,6 +477,7 @@ struct WindowGroupView: View {
             }
             .contextMenu {
                 Button("Rename Window...") {
+                    NSApp.activate(ignoringOtherApps: true)
                     editText = group.customName ?? ""
                     isEditingName = true
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
@@ -592,6 +599,7 @@ struct GroupedSessionCardView: View {
         .background(Color.primary.opacity(isHovering ? 0.05 : 0))
         .contentShape(Rectangle())
         .onTapGesture(count: 2) {
+            NSApp.activate(ignoringOtherApps: true)
             editText = session.displayName
             isEditing = true
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
@@ -599,11 +607,16 @@ struct GroupedSessionCardView: View {
             }
         }
         .onTapGesture(count: 1) {
-            guard !isEditing else { return }
-            onTap()
+            if isEditing {
+                onRename(editText)
+                isEditing = false
+            } else {
+                onTap()
+            }
         }
         .contextMenu {
             Button("Rename...") {
+                NSApp.activate(ignoringOtherApps: true)
                 editText = session.displayName
                 isEditing = true
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
@@ -739,6 +752,7 @@ struct SessionCardView: View {
         )
         .contentShape(Rectangle())
         .onTapGesture(count: 2) {
+            NSApp.activate(ignoringOtherApps: true)
             editText = session.displayName
             isEditing = true
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
@@ -746,11 +760,16 @@ struct SessionCardView: View {
             }
         }
         .onTapGesture(count: 1) {
-            guard !isEditing else { return }
-            onTap()
+            if isEditing {
+                onRename(editText)
+                isEditing = false
+            } else {
+                onTap()
+            }
         }
         .contextMenu {
             Button("Rename...") {
+                NSApp.activate(ignoringOtherApps: true)
                 editText = session.displayName
                 isEditing = true
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
