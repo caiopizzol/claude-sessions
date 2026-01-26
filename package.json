@@ -1,5 +1,13 @@
 {
   "private": true,
+  "scripts": {
+    "dev": "cd widget && swift run",
+    "build": "cd widget && swift build",
+    "build:release": "cd widget && swift build -c release",
+    "build:app": "./scripts/build-app.sh",
+    "build:dmg": "./scripts/build-dmg.sh",
+    "test": "cd widget && swift test"
+  },
   "devDependencies": {
     "semantic-release": "^25.0.2",
     "@semantic-release/exec": "^7.1.0",
