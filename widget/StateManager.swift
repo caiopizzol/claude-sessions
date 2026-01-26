@@ -17,8 +17,23 @@ struct ClaudeSession: Identifiable, Codable {
     let timestamp: Int
     let context_percentage: Double?
     let input_tokens: Int?
+    var memoryMB: Int? // RSS memory in megabytes
 
     var displayName: String { customName ?? terminalTabName ?? project }
+
+    var memoryDisplay: String? {
+        guard let mb = memoryMB else { return nil }
+        return "\(mb)MB"
+    }
+
+    var memoryColor: Color {
+        guard let mb = memoryMB else { return Color.white.opacity(0.4) }
+        switch mb {
+        case 0 ..< 300: return Color.white.opacity(0.7)
+        case 300 ..< 500: return .yellow
+        default: return .red
+        }
+    }
 
     var stateEmoji: String {
         switch state {
@@ -214,6 +229,7 @@ class StateManager: ObservableObject {
                     enrichedSessions[i].terminalTabName = info.tabName
                     enrichedSessions[i].windowId = info.windowId
                 }
+                enrichedSessions[i].memoryMB = getProcessMemory(for: enrichedSessions[i].tty)
             }
 
             // Detect and remove stale sessions (Terminal.app tabs that no longer exist)
@@ -398,6 +414,44 @@ class StateManager: ObservableObject {
         var request = URLRequest(url: url)
         request.httpMethod = "DELETE"
         _ = try? await URLSession.shared.data(for: request)
+    }
+
+    /// Returns RSS memory in MB for the claude process on the given TTY
+    private func getProcessMemory(for tty: String) -> Int? {
+        guard tty.hasPrefix("/dev/ttys") else { return nil }
+
+        let ttyName = String(tty.dropFirst("/dev/".count))
+
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/bin/ps")
+        process.arguments = ["-t", ttyName, "-o", "rss,comm"]
+
+        let pipe = Pipe()
+        process.standardOutput = pipe
+        process.standardError = FileHandle.nullDevice
+
+        do {
+            try process.run()
+            process.waitUntilExit()
+
+            let data = pipe.fileHandleForReading.readDataToEndOfFile()
+            guard let output = String(data: data, encoding: .utf8) else { return nil }
+
+            // Find line with "claude" and extract RSS (in KB)
+            for line in output.split(separator: "\n") {
+                let trimmed = line.trimmingCharacters(in: .whitespaces)
+                if trimmed.contains("claude") {
+                    let parts = trimmed.split(whereSeparator: { $0.isWhitespace })
+                    if let rssKB = Int(parts.first ?? "") {
+                        return rssKB / 1024 // Convert KB to MB
+                    }
+                }
+            }
+        } catch {
+            // Silently fail - memory display is optional
+        }
+
+        return nil
     }
 
     func focusSession(_ session: ClaudeSession) {

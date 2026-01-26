@@ -229,7 +229,7 @@ struct DetailedSessionCard: View {
                 Spacer()
             }
 
-            // Bottom row: state + context %
+            // Bottom row: state + memory · context %
             HStack {
                 Text(session.stateDescription)
                     .font(.system(size: 10))
@@ -237,10 +237,24 @@ struct DetailedSessionCard: View {
 
                 Spacer()
 
-                if let pct = session.context_percentage {
-                    Text("\(Int(pct * 100))%")
-                        .font(.system(size: 10))
-                        .foregroundColor(session.contextRingColor)
+                HStack(spacing: 4) {
+                    if let mem = session.memoryDisplay {
+                        Text(mem)
+                            .font(.system(size: 10))
+                            .foregroundColor(session.memoryColor)
+                    }
+
+                    if session.memoryMB != nil, session.context_percentage != nil {
+                        Text("·")
+                            .font(.system(size: 10))
+                            .foregroundColor(.white.opacity(0.3))
+                    }
+
+                    if let pct = session.context_percentage {
+                        Text("\(Int(pct * 100))%")
+                            .font(.system(size: 10))
+                            .foregroundColor(session.contextRingColor)
+                    }
                 }
             }
         }
