@@ -7,6 +7,7 @@ class FloatingPanelController: NSObject, NSWindowDelegate, ObservableObject {
     private var panel: NSPanel?
     private let stateManager: StateManager
     private var stateObservation: AnyCancellable?
+    private var keyMonitor: Any?
 
     // Persistence keys
     private let kPanelPositionX = "floatingPanelPositionX"
@@ -21,6 +22,12 @@ class FloatingPanelController: NSObject, NSWindowDelegate, ObservableObject {
         }
     }
 
+    // Keyboard navigation cursor (where arrow keys point)
+    @Published var navigationIndex: Int?
+
+    // Focused session (activated with Return)
+    @Published var focusedSessionId: String?
+
     init(stateManager: StateManager) {
         self.stateManager = stateManager
         isCollapsed = UserDefaults.standard.bool(forKey: kPanelCollapsed)
@@ -28,6 +35,7 @@ class FloatingPanelController: NSObject, NSWindowDelegate, ObservableObject {
 
         setupPanel()
         setupStateObservation()
+        setupKeyboardMonitor()
     }
 
     private func setupPanel() {
@@ -41,7 +49,7 @@ class FloatingPanelController: NSObject, NSWindowDelegate, ObservableObject {
 
         panel = NSPanel(
             contentRect: NSRect(x: 0, y: 0, width: initialWidth, height: initialHeight),
-            styleMask: [.nonactivatingPanel, .titled, .fullSizeContentView],
+            styleMask: [.titled, .fullSizeContentView],
             backing: .buffered,
             defer: false
         )
@@ -54,6 +62,7 @@ class FloatingPanelController: NSObject, NSWindowDelegate, ObservableObject {
         panel.isMovableByWindowBackground = true
         panel.level = .floating
         panel.hidesOnDeactivate = false
+        panel.becomesKeyOnlyIfNeeded = true
 
         // Visible on all Spaces
         panel.collectionBehavior = [
@@ -86,13 +95,114 @@ class FloatingPanelController: NSObject, NSWindowDelegate, ObservableObject {
     }
 
     private func setupStateObservation() {
-        // Observe session changes for attention count updates
+        // Observe session changes for attention count updates and selection adjustment
         stateObservation = stateManager.$sessions
             .receive(on: DispatchQueue.main)
-            .sink { [weak self] _ in
+            .sink { [weak self] sessions in
+                guard let self else { return }
                 // Trigger UI update for attention badge
-                self?.objectWillChange.send()
+                objectWillChange.send()
+
+                // Adjust selection if sessions change
+                if let index = navigationIndex {
+                    if sessions.isEmpty {
+                        navigationIndex = nil
+                    } else if index >= sessions.count {
+                        navigationIndex = sessions.count - 1
+                    }
+                } else if !sessions.isEmpty, !isCollapsed {
+                    // Auto-select first session when expanded
+                    navigationIndex = 0
+                }
             }
+    }
+
+    // MARK: - Keyboard Navigation
+
+    private func setupKeyboardMonitor() {
+        keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            guard let self, !isCollapsed else { return event }
+
+            switch event.keyCode {
+            case 125: // Down arrow
+                selectNext()
+                return nil
+            case 126: // Up arrow
+                selectPrevious()
+                return nil
+            case 38: // J key
+                if !event.modifierFlags.contains(.command) {
+                    selectNext()
+                    return nil
+                }
+            case 40: // K key
+                if !event.modifierFlags.contains(.command) {
+                    selectPrevious()
+                    return nil
+                }
+            case 36: // Return
+                focusSelected()
+                return nil
+            case 53: // Escape
+                handleEscape()
+                return nil
+            default:
+                break
+            }
+            return event
+        }
+    }
+
+    private func removeKeyboardMonitor() {
+        if let monitor = keyMonitor {
+            NSEvent.removeMonitor(monitor)
+            keyMonitor = nil
+        }
+    }
+
+    private func selectNext() {
+        let sessions = stateManager.sessions
+        guard !sessions.isEmpty else { return }
+
+        if let current = navigationIndex {
+            // Stop at edge (no wrap)
+            if current < sessions.count - 1 {
+                navigationIndex = current + 1
+            }
+        } else {
+            navigationIndex = 0
+        }
+    }
+
+    private func selectPrevious() {
+        let sessions = stateManager.sessions
+        guard !sessions.isEmpty else { return }
+
+        if let current = navigationIndex {
+            // Stop at edge (no wrap)
+            if current > 0 {
+                navigationIndex = current - 1
+            }
+        } else {
+            navigationIndex = sessions.count - 1
+        }
+    }
+
+    private func focusSelected() {
+        guard let index = navigationIndex,
+              index >= 0,
+              index < stateManager.sessions.count else { return }
+        let session = stateManager.sessions[index]
+        focusedSessionId = session.session_id
+        stateManager.focusSession(session)
+    }
+
+    private func handleEscape() {
+        if navigationIndex != nil {
+            navigationIndex = nil
+        } else {
+            toggleCollapsed()
+        }
     }
 
     // MARK: - Window Position Persistence
@@ -168,6 +278,7 @@ class FloatingPanelController: NSObject, NSWindowDelegate, ObservableObject {
     }
 
     func cleanup() {
+        removeKeyboardMonitor()
         panel?.close()
         panel = nil
     }

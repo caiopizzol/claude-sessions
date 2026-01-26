@@ -97,7 +97,6 @@ struct CollapsedHeaderView: View {
 struct ExpandedPanelView: View {
     @ObservedObject var stateManager: StateManager
     @ObservedObject var controller: FloatingPanelController
-    @State private var selectedSessionId: String?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -124,6 +123,7 @@ struct ExpandedPanelView: View {
             .onTapGesture {
                 controller.toggleCollapsed()
             }
+            .help("esc Collapse")
 
             // Session list
             ScrollView(showsIndicators: false) {
@@ -131,12 +131,14 @@ struct ExpandedPanelView: View {
                     if stateManager.sessions.isEmpty {
                         EmptyStateView(isConnected: stateManager.isConnected)
                     } else {
-                        ForEach(stateManager.sessions) { session in
+                        ForEach(Array(stateManager.sessions.enumerated()), id: \.element.id) { index, session in
                             DetailedSessionCard(
                                 session: session,
-                                isSelected: selectedSessionId == session.session_id,
+                                isNavigationCursor: controller.navigationIndex == index,
+                                isFocused: controller.focusedSessionId == session.session_id,
                                 onTap: {
-                                    selectedSessionId = session.session_id
+                                    controller.navigationIndex = index
+                                    controller.focusedSessionId = session.session_id
                                     stateManager.focusSession(session)
                                 },
                                 onRename: { newName in
@@ -145,6 +147,7 @@ struct ExpandedPanelView: View {
                                     }
                                 }
                             )
+                            .help("↵ Focus · ↑↓/JK Navigate")
 
                             if session.id != stateManager.sessions.last?.id {
                                 Divider()
@@ -185,7 +188,8 @@ struct ExpandedPanelView: View {
 
 struct DetailedSessionCard: View {
     let session: ClaudeSession
-    let isSelected: Bool
+    let isNavigationCursor: Bool // Where arrow keys are pointing
+    let isFocused: Bool // Session activated with Return
     let onTap: () -> Void
     let onRename: (String) -> Void
     @State private var isHovering = false
@@ -195,6 +199,26 @@ struct DetailedSessionCard: View {
 
     private var needsAttention: Bool {
         session.state == "asking" || session.state == "permission"
+    }
+
+    // Border color based on state
+    private var borderColor: Color {
+        if isFocused {
+            return Color.accentColor.opacity(0.8) // Blue for focused
+        } else if isNavigationCursor {
+            return Color.white.opacity(0.3) // White/gray for nav cursor
+        }
+        return Color.clear
+    }
+
+    // Background color based on state
+    private var backgroundColor: Color {
+        if isFocused {
+            return Color.accentColor.opacity(0.08)
+        } else if isNavigationCursor {
+            return Color.white.opacity(0.03)
+        }
+        return Color.clear
     }
 
     var body: some View {
@@ -272,14 +296,11 @@ struct DetailedSessionCard: View {
         )
         .background(
             RoundedRectangle(cornerRadius: 6)
-                .fill(isSelected ? Color.accentColor.opacity(0.03) : Color.clear)
+                .fill(backgroundColor)
         )
         .overlay(
             RoundedRectangle(cornerRadius: 6)
-                .stroke(
-                    isSelected ? Color.accentColor.opacity(0.8) : Color.clear,
-                    lineWidth: 1.5
-                )
+                .stroke(borderColor, lineWidth: 1.5)
         )
         .overlay(
             // Left border accent for attention
